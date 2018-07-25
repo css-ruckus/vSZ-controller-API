@@ -1,0 +1,78 @@
+#!/bin/bash
+
+##
+# Help output
+##
+function show_help {
+    printf "%s\n" "$0: Simple demonstration of bash and curl to connect to vSZ"
+    printf "%s\n" "Optionsn"
+    printf "%s\n" "-a <string>         :API version string. eg 'v5_1'"
+    printf "%s\n" "-h/?                :This help"
+    printf "%s\n" "-i <ip-address>     :Address for controller"
+    printf "%s\n" "-p <password>       :Password for controller API"
+    printf "%s\n\n" "-u <username>       :Username for controller API"
+    exit 0
+}
+
+function json_creds {
+cat << EOF
+  {
+    "username": "$UN",
+    "password": "$PW"
+  }
+EOF
+}
+
+##
+# Defaults
+##
+API="v5_1"
+
+
+##
+# Main
+##
+while getopts hi:u:p: OPTS
+do
+  case "${OPTS}" in
+    a)
+      API=$OPTARG
+      ;;
+    h|\?) 
+      show_help
+      ;; 
+    i) 
+      IP=$OPTARG
+      ;;
+    p) 
+      PW=$OPTARG
+      ;;
+    u) 
+      UN=$OPTARG
+      ;;
+  esac
+done
+if [[ -z $IP || -z $UN || -z $PW ]]; then 
+    show_help
+fi
+##
+# Get the session opened with the controller
+##
+rm -f /tmp/cookies > /dev/null 2>&1
+URI="https://$IP:8443"
+
+CMD=$(curl -s /dev/null -k -c /tmp/cookies \
+  -X POST "$URI/wsg/api/public/$API/session" \
+  -H "Content-Type: application/json" \
+  --data "$(json_creds)" | json_pp)
+printf "Connection details:\n%s\n" "$CMD"
+
+##
+# Get the session details from the API.
+# Could be any well formed http GET
+##
+REQ=$(curl -s -k -b /tmp/cookies \
+  -X GET "$URI/wsg/api/public/$API/session" \
+  -H "Content-Type: application/json" | json_pp )
+printf "%s\n" "Response:"
+printf "%s\n" "$REQ"
